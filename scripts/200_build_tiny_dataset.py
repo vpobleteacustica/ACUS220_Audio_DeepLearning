@@ -73,5 +73,5 @@ if __name__ == "__main__":
 
     print(f"🔧 Construyendo desde {args.raw} -> {args.out}")
     df = build_dataset(args.raw, args.out, args.sr, args.duration, args.n_mels, args.n_mfcc)
-    print("✅ Listo. metadata.csv:", args.out / "metadata.csv")
+    print("Listo. metadata.csv:", args.out / "metadata.csv")
     print(df["label"].value_counts())
