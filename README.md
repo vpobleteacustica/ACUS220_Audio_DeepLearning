@@ -2,7 +2,7 @@
   <img src="escudo/uach_logo.png" alt="Universidad Austral de Chile" width="120" style="vertical-align:middle; margin-right:12px;">
 </p>
 
-# ACUS220 – Acústica Computacional con Python  
+# ACUS220 - Acústica Computacional con Python - Instituto de Acústica, Universidad Austral de Chile  
 ### Clasificando muestras de audio & deep learning (demo mínima)
 
 ## Flujo básico
