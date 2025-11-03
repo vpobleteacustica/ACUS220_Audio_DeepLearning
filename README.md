@@ -1,4 +1,4 @@
-# ACUS220 — Clasificando muestras de audio & deep learning (demo mínima)
+# ACUS220 - Acústica Computacional con Python - Clasificando muestras de audio & deep learning (demo mínima)
 
 ## Flujo básico
 1) Chequear entorno  
