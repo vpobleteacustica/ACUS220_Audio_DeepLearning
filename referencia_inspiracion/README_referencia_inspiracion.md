@@ -4,7 +4,7 @@
 
 # Referencia e Inspiración: ACUS220 - Acústica Computacional con Python - Clase sobre Audio & Deep Learning
 
-Este directorio contiene material de lectura complementaria para los estudiantes del curso **ACUS220** y que inspiró la clase de Audio & Deep Learning**. Instituto de Acústica, **Universidad Austral de Chile (UACh)**.
+Este directorio contiene material de lectura complementaria para los estudiantes del curso **ACUS220** y que inspiró la clase de **Audio & Deep Learning**. Instituto de Acústica, **Universidad Austral de Chile (UACh)**.
 
 ---
 
