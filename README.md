@@ -1,4 +1,9 @@
-# ACUS220 - Acústica Computacional con Python - Clasificando muestras de audio & deep learning (demo mínima)
+<p align="left">
+  <img src="escudo/uach_logo.png" alt="Universidad Austral de Chile" width="120" style="vertical-align:middle; margin-right:12px;">
+</p>
+
+# ACUS220 – Acústica Computacional con Python  
+### Clasificando muestras de audio & deep learning (demo mínima)
 
 ## Flujo básico
 1) Chequear entorno  

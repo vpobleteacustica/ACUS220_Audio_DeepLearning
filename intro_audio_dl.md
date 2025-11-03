@@ -1,5 +1,9 @@
-# Guía Introductoria — Fundamentos de audio y deep learning  
-### Curso ACUS220 · Instituto de Acústica · Universidad Austral de Chile  
+<p align="left">
+  <img src="escudo/uach_logo.png" alt="Universidad Austral de Chile" width="120" style="vertical-align:middle; margin-right:12px;">
+</p>
+
+# ACUS220 – Acústica Computacional con Python  
+### Clasificando muestras de audio & deep learning (demo mínima)
 
 ---
 

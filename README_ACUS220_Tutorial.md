@@ -1,6 +1,9 @@
-# ACUS220 - Acústica Computacional con Python - Instituto de Acústica, Universisidad Austral de Chile
+<p align="left">
+  <img src="escudo/uach_logo.png" alt="Universidad Austral de Chile" width="120" style="vertical-align:middle; margin-right:12px;">
+</p>
 
-## Clasificación de muestras de audio & deep learning (guía de apoyo)
+# ACUS220 – Acústica Computacional con Python – Instituto de Acústica, Universidad Austral de Chile
+### Clasificando muestras de audio & deep learning (demo mínima)
 
 Bienvenido/a... Esta guía te lleva **paso a paso** desde clonar el repositorio hasta entrenar un clasificador sencillo con espectrogramas Log‑Mel y features Mel Frequency Cepstral Coefficients (MFCC) típicamente usados en audio.
 
