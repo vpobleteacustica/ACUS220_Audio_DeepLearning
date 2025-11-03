@@ -1,4 +1,4 @@
-# ACUS220 — Acústica Computacional con Python - Instituto de Acústica, Universisidad Austral de Chile
+# ACUS220 - Acústica Computacional con Python - Instituto de Acústica, Universisidad Austral de Chile
 
 ## Clasificación de muestras de audio & deep learning (guía de apoyo)
 
