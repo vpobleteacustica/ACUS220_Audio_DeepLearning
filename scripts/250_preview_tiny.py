@@ -1,128 +1,199 @@
-# scripts/250_preview_tiny.py
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Genera previsualizaciones (grids) de STFT / Log-Mel / MFCC por clase
-y una grilla resumen de muestras de todas las clases.
+250_preview_tiny.py
 
-Entrada:
-  data/processed/tiny_specs/metadata.csv  (producido por 200_build_tiny_dataset.py)
+Visualiza un mosaico de espectrogramas (p.ej. Log-Mel) del tiny_dataset
+para usar en la clase ACUS220.
 
-Salidas:
-  data/processed/tiny_specs/_preview_<CLASE>.png
-  data/processed/tiny_specs/_preview_all.png
+- Lee data/processed/tiny_specs/metadata.csv
+- Toma N ejemplos por clase
+- Aplica:
+    * clipping dinámico en dB (max-80)
+    * recorte inteligente de columnas silenciosas
+- Dibuja un mosaico especie × ejemplos con estética tipo paper.
 """
 
+from __future__ import annotations
 from pathlib import Path
-import json
 import argparse
+
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 
-DATA_DIR = Path("data/processed/tiny_specs")
-META_CSV = DATA_DIR / "metadata.csv"
+# --- bootstrap sys.path a la raíz del repo ---
+import sys
+ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+# ---------------------------------------------
 
-def load_npz(npz_path: Path):
-    d = np.load(npz_path, allow_pickle=True)
-    # claves esperadas
-    for k in ("stft_db", "mel_db", "mfcc", "meta"):
-        if k not in d.files:
-            raise KeyError(f"Falta clave '{k}' en {npz_path}")
-    stft_db = d["stft_db"]
-    mel_db  = d["mel_db"]
-    mfcc    = d["mfcc"]
-    meta    = json.loads(d["meta"].item())
-    return stft_db, mel_db, mfcc, meta
 
-def grid_per_class(df: pd.DataFrame, label: str, k: int = 10, out_png: Path | None = None, seed: int = 0):
-    sub = df[df["label"] == label]
-    if sub.empty:
-        print(f"⚠️  Clase sin muestras: {label}")
-        return
-    sub = sub.sample(min(k, len(sub)), random_state=seed).reset_index(drop=True)
-    n = len(sub)
+def prepare_for_plot(spec: np.ndarray,
+                     dynamic_range_db: float = 80.0) -> tuple[np.ndarray, float, float]:
+    """
+    Prepara un espectrograma para visualización:
 
-    fig, axs = plt.subplots(n, 3, figsize=(9, 2.2*n))
-    if n == 1:
-        axs = np.array([axs])
+    1) Clipping dinámico en rango [max - dynamic_range_db, max] dB.
+    2) Recorte inteligente de columnas silenciosas:
+       - Calcula energía por columna.
+       - Umbral adaptativo con percentil 10.
+       - Si el caso es extremo (casi todo silencio), aplica un fallback
+         usando un umbral relativo al máximo.
 
-    for i, (_, r) in enumerate(sub.iterrows()):
-        stft_db, mel_db, mfcc, meta = load_npz(Path(r["npz"]))
-        axs[i, 0].imshow(stft_db, aspect="auto", origin="lower"); axs[i, 0].set_title("STFT dB")
-        axs[i, 1].imshow(mel_db,  aspect="auto", origin="lower"); axs[i, 1].set_title("Log-Mel dB")
-        axs[i, 2].imshow(mfcc,    aspect="auto", origin="lower"); axs[i, 2].set_title("MFCC")
-        for j in range(3):
-            axs[i, j].set_xticks([]); axs[i, j].set_yticks([])
-        # Anotar el nombre del archivo original
-        axs[i, 0].text(4, 4, Path(meta["wav"]).name, color="w", fontsize=8,
-                       bbox=dict(facecolor="k", alpha=0.4))
+    Devuelve:
+        spec_vis : np.ndarray   -> espectrograma listo para imshow
+        vmin, vmax : floats     -> límites de color (dB)
+    """
+    # 1) Clipping dinámico
+    spec_max = float(spec.max())
+    vmin = spec_max - dynamic_range_db
+    vmax = spec_max
+    spec_clipped = np.clip(spec, vmin, vmax)
 
-    plt.suptitle(f"Clase: {label}", y=1.02)
-    plt.tight_layout()
-    if out_png:
-        out_png.parent.mkdir(parents=True, exist_ok=True)
-        plt.savefig(out_png, dpi=160)
-        print(f"Guardado: {out_png}")
-    plt.close(fig)
+    # 2) Energía por columna
+    col_energy = spec_clipped.mean(axis=0)
 
-def grid_all_classes(df: pd.DataFrame, labels: list[str], k: int = 5, out_png: Path | None = None, seed: int = 0):
-    # Una fila por clase, cada fila muestra k espectrogramas Log-Mel
-    rows = len(labels)
-    if rows == 0:
-        print("⚠️  No hay clases para mostrar.")
-        return
-    cols = k
-    fig, axs = plt.subplots(rows, cols, figsize=(2.2*cols, 2.0*rows), squeeze=False)
+    # Umbral adaptativo
+    thr = np.percentile(col_energy, 10)
+    mask = col_energy > thr
 
-    rng = np.random.default_rng(seed)
-    for i, label in enumerate(labels):
-        sub = df[df["label"] == label]
-        if sub.empty:
-            for j in range(cols):
-                axs[i, j].axis("off")
-            axs[i, 0].set_ylabel(label, rotation=0, ha="right", va="center")
-            continue
-        take = min(cols, len(sub))
-        idxs = rng.choice(len(sub), size=take, replace=False)
-        picks = sub.iloc[idxs].reset_index(drop=True)
-        for j in range(cols):
-            ax = axs[i, j]
-            if j < take:
-                _, mel_db, _, _ = load_npz(Path(picks.loc[j, "npz"]))
-                ax.imshow(mel_db, aspect="auto", origin="lower")
-            ax.set_xticks([]); ax.set_yticks([])
-        axs[i, 0].set_ylabel(label, rotation=0, ha="right", va="center")
+    # Fallback si casi todo es silencio
+    if mask.sum() < 5:
+        thr2 = col_energy.max() - 60.0
+        mask = col_energy > thr2
+        if not np.any(mask):
+            # No hay nada que recortar de forma razonable
+            return spec_clipped, vmin, vmax
 
-    plt.suptitle("Log-Mel por clase", y=1.02)
-    plt.tight_layout()
-    if out_png:
-        out_png.parent.mkdir(parents=True, exist_ok=True)
-        plt.savefig(out_png, dpi=160)
-        print(f"Guardado: {out_png}")
-    plt.close(fig)
+    spec_vis = spec_clipped[:, mask]
+    return spec_vis, vmin, vmax
 
-def main():
-    ap = argparse.ArgumentParser()
-    ap.add_argument("--k", type=int, default=10, help="Imágenes por clase (grids por clase)")
-    ap.add_argument("--k_all", type=int, default=5, help="Imágenes por clase en el grid global")
-    ap.add_argument("--seed", type=int, default=0, help="Semilla para muestreo")
-    args = ap.parse_args()
 
-    assert META_CSV.exists(), f"No existe {META_CSV}. Corre primero: python -m scripts.200_build_tiny_dataset"
-    df = pd.read_csv(META_CSV)
-    assert not df.empty, "metadata.csv está vacío."
+def main(args: argparse.Namespace) -> None:
+    meta_path: Path = args.metadata
+    df = pd.read_csv(meta_path)
 
-    print("Conteo por clase:")
-    print(df["label"].value_counts())
+    if "npz" not in df.columns:
+        raise ValueError(f"metadata.csv no tiene columna 'npz': {meta_path}")
 
+    # Ordenar las clases para que la figura sea estable entre ejecuciones
     labels = sorted(df["label"].unique())
+    n_classes = len(labels)
+    n_cols = args.n_per_class
 
-    # Grids por clase (STFT / Log-Mel / MFCC)
-    for cls in labels:
-        grid_per_class(df, cls, k=args.k, seed=args.seed, out_png=DATA_DIR / f"_preview_{cls}.png")
+    # Figura: algo alta y estilizada
+    fig, axes = plt.subplots(
+        n_classes,
+        n_cols,
+        figsize=(n_cols * 2.2, n_classes * 2.2),
+        dpi=200,
+        squeeze=False,
+        constrained_layout=True,
+    )
 
-    # Grid global (solo Log-Mel), k_all por clase
-    grid_all_classes(df, labels, k=args.k_all, seed=args.seed, out_png=DATA_DIR / "_preview_all.png")
+    last_im = None  # para el colorbar
+
+    for i, label in enumerate(labels):
+        sub = df[df["label"] == label].copy()
+
+        # Tomamos los primeros n_per_class (tiny dataset, no hace falta random)
+        sub = sub.head(n_cols)
+
+        for j in range(n_cols):
+            ax = axes[i, j]
+            ax.set_xticks([])
+            ax.set_yticks([])
+
+            if j >= len(sub):
+                # No hay suficientes muestras; dejamos el eje vacío
+                ax.axis("off")
+                continue
+
+            row = sub.iloc[j]
+            npz_path = Path(row["npz"])
+
+            if not npz_path.exists():
+                ax.axis("off")
+                continue
+
+            data = np.load(npz_path, allow_pickle=True)
+
+            if args.feature not in data:
+                raise KeyError(
+                    f"El archivo {npz_path} no contiene la clave '{args.feature}'. "
+                    f"Claves disponibles: {list(data.keys())}"
+                )
+
+            spec = data[args.feature]  # (n_mels, T) o similar
+
+            # Preprocesado para visualización
+            spec_vis, vmin, vmax = prepare_for_plot(spec)
+
+            im = ax.imshow(
+                spec_vis,
+                origin="lower",
+                aspect="auto",
+                cmap="magma",
+                vmin=vmin,
+                vmax=vmax,
+            )
+            last_im = im
+
+            # Solo ponemos nombre de la especie en la primera columna
+            if j == 0:
+                ax.set_ylabel(label.replace("_", " "), fontsize=9)
+
+    # Título general
+    fig.suptitle(
+        f"Ejemplos de {args.feature} por especie (tiny_dataset)",
+        fontsize=12,
+        y=1.02,
+    )
+
+    # Un solo colorbar para toda la figura
+    if last_im is not None:
+        cbar = fig.colorbar(
+            last_im,
+            ax=axes.ravel().tolist(),
+            fraction=0.015,
+            pad=0.01,
+        )
+        cbar.set_label("Nivel (dB)", fontsize=9)
+
+    out_path = args.out
+    fig.savefig(out_path, bbox_inches="tight")
+    print(f"✅ Figura guardada en: {out_path}")
+
 
 if __name__ == "__main__":
-    main()
+    ap = argparse.ArgumentParser(description="Preview de espectrogramas del tiny_dataset.")
+    ap.add_argument(
+        "--metadata",
+        type=Path,
+        default=Path("data/processed/tiny_specs/metadata.csv"),
+        help="Ruta a metadata.csv",
+    )
+    ap.add_argument(
+        "--feature",
+        type=str,
+        default="mel_db",
+        help="Clave del .npz a visualizar (mel_db, stft_db, gammatone_db, etc.)",
+    )
+    ap.add_argument(
+        "--n-per-class",
+        type=int,
+        default=5,
+        help="Número de ejemplos por clase a mostrar.",
+    )
+    ap.add_argument(
+        "--out",
+        type=Path,
+        default=Path("figures/tiny_specs_preview.png"),
+        help="Ruta de salida para la figura.",
+    )
+    args = ap.parse_args()
+
+    args.out.parent.mkdir(parents=True, exist_ok=True)
+    main(args)

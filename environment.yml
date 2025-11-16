@@ -70,4 +70,3 @@ dependencies:
       - typing-extensions==4.15.0
       - tzdata==2025.2
       - urllib3==2.5.0
-prefix: /Users/vpoblete/miniconda3/envs/audio_deeplearning
